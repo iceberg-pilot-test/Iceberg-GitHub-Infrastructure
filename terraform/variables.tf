@@ -7,5 +7,5 @@ variable "github_token" {
 variable "github_org_name" {
   type        = string
   description = "GitHub Organization Name"
-  default     = "iceberg-pilot-test" 
+  default     = "iceberg-pilot-test"
 }
