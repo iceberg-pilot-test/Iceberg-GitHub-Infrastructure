@@ -1,0 +1,14 @@
+# Default reviewers for all PRs · Tüm PR'lar için varsayılan inceleyiciler
+*                       @iceberg-pilot-test/core-engineering
+
+# Infrastructure and DevOps files · Altyapı ve DevOps dosyaları
+/infrastructure/        @iceberg-pilot-test/devops-team
+/terraform/             @iceberg-pilot-test/devops-team
+*.dockerfile            @iceberg-pilot-test/devops-team
+docker-compose*.yml     @iceberg-pilot-test/devops-team
+
+# CI/CD Workflows · CI/CD İş Akışları
+/.github/workflows/     @iceberg-pilot-test/devops-team @iceberg-pilot-test/tech-leads
+
+# Documentation · Dokümantasyon
+/docs/                  @iceberg-pilot-test/tech-leads
