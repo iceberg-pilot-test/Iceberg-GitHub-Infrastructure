@@ -1,0 +1,7 @@
+description: "Infrastructure as Code for managing the Iceberg organization"
+language: t
+mentors:
+  - uslanozan
+developers:
+  - paitblack
+default_branch: main
