@@ -1,5 +1,5 @@
 description: "Infrastructure as Code for managing the Iceberg organization"
-language: t
+language: typescript
 mentors:
   - uslanozan
 developers:
