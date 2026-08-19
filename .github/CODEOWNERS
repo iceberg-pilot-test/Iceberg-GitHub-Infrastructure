@@ -3,3 +3,7 @@
 
 # Varsayılan sahiplik · Default ownership
 *                       @iceberg-pilot-test/iceberg-github-infrastructure-mentors
+
+# Yola özel sahiplik · Path-specific ownership
+/.github/workflows/     @iceberg-pilot-test/platform-admins
+/terraform/             @iceberg-pilot-test/platform-admins
