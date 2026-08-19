@@ -1,5 +1,5 @@
 # Bu dosya Terraform tarafından üretilmiştir — elle düzenlemeyin.
-# Kaynak: config/organization.yml
+# Kaynak: config/repositories/Iceberg-GitHub-Infrastructure.yml (mentors, code_owners)
 
 # Varsayılan sahiplik · Default ownership
 *                       @iceberg-pilot-test/iceberg-github-infrastructure-mentors
