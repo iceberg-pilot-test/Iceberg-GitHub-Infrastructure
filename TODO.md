@@ -1,4 +1,4 @@
-# TODO — Açık İşler
+# TODO 
 
 Bu dosya **kısa vadeli, elle yapılacak** işleri tutar: doğrulanmamış testler, bekleyen
 temizlikler, tespit edilmiş tutarsızlıklar.
@@ -11,7 +11,7 @@ Son güncelleme: 2026-08-19
 
 ---
 
-## 🔴 Bloklayan iş
+##  Bloklayan iş
 
 - [ ] 🔴 **`none` ayarı bugün üç repo'da ETKİSİZ — çünkü onlar public.**
       2026-08-19'da fark edildi. `Iceberg-GitHub-Infrastructure`, `pilot-intern-api` ve
