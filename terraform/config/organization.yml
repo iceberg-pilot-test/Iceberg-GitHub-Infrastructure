@@ -51,7 +51,7 @@ org_admin_team: platform-admins
 # alanları silmeye çalışmasın. Rebrand'de burada değişecek.
 profile:
   name: "Iceberg X"
-  description: "Desc created by Ozan"
+  description: Desc created by Ozan. I love Golang
   blog: "https://x.iceberg-digital.co.uk/"
   location: "United Kingdom"
 
@@ -166,16 +166,42 @@ defaults:
       push_allowed_roles: [mentor, head-of-engineering]
 
   labels:
-    - { name: "type: bug", color: "d73a4a", description: "Hatalı davranış" }
-    - { name: "type: feature", color: "0e8a16", description: "Yeni özellik" }
-    - { name: "type: chore", color: "cfd3d7", description: "Bakım işi" }
-    - { name: "type: docs", color: "0075ca", description: "Dokümantasyon" }
-    - { name: "priority: critical", color: "b60205", description: "Acil müdahale" }
-    - { name: "priority: high", color: "d93f0b", description: "Yüksek öncelik" }
-    - { name: "priority: medium", color: "fbca04", description: "Orta öncelik" }
-    - { name: "priority: low", color: "c2e0c6", description: "Düşük öncelik" }
-    - { name: "status: in-review", color: "5319e7", description: "İnceleme bekliyor" }
-    - { name: "status: blocked", color: "e99695", description: "Engellenmiş" }
-    - { name: "status: ready", color: "0e8a16", description: "Başlanabilir" }
-    - { name: "good first issue", color: "7057ff", description: "Yeni katılanlar için" }
-    - { name: "help wanted", color: "008672", description: "Yardım aranıyor" }
+    - name: 'type: bug'
+      color: d73a4a
+      description: Hatalı davranış
+    - name: 'type: feature'
+      color: 0e8a16
+      description: Yeni özellik
+    - name: 'type: chore'
+      color: cfd3d7
+      description: Bakım işi
+    - name: 'type: docs'
+      color: 0075ca
+      description: Dokümantasyon
+    - name: 'priority: critical'
+      color: b60205
+      description: Acil müdahale
+    - name: 'priority: high'
+      color: d93f0b
+      description: Yüksek öncelik
+    - name: 'priority: medium'
+      color: fbca04
+      description: Orta öncelik
+    - name: 'priority: low'
+      color: c2e0c6
+      description: Düşük öncelik
+    - name: 'status: in-review'
+      color: '5319e7'
+      description: İnceleme bekliyor
+    - name: 'status: blocked'
+      color: e99695
+      description: Engellenmiş / Blocked
+    - name: 'status: ready'
+      color: 0e8a16
+      description: Başlanabilir
+    - name: good first issue
+      color: 7057ff
+      description: Yeni katılanlar için
+    - name: help wanted
+      color: '008672'
+      description: Yardım aranıyor
