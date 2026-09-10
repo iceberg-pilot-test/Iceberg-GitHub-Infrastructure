@@ -1,5 +1,8 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import { LabelChip } from './LabelChip'
+import { languageLabel } from './LanguageBadge'
 import { Modal } from './Modal'
+import { useT } from '../i18n'
 import { validateDescription } from '../services/validation'
 import type { YamlValue } from '../services/yaml'
 import {
@@ -7,6 +10,7 @@ import {
   type Language,
   type ProtectedBranchRule,
   type RepoConfig,
+  type RepoLabel,
   type TemplateMode,
 } from '../types/config'
 
@@ -35,12 +39,12 @@ type BranchBoolKey =
   | 'allow_force_push'
   | 'allow_deletions'
 
-const BRANCH_BOOL_FIELDS: { key: BranchBoolKey; label: string }[] = [
-  { key: 'require_code_owner_review', label: 'CODEOWNERS onayı zorunlu' },
-  { key: 'dismiss_stale_reviews', label: 'Yeni commit onayları düşürür' },
-  { key: 'require_conversation_resolution', label: 'Tüm yorumlar çözülmeli' },
-  { key: 'allow_force_push', label: 'Force push serbest' },
-  { key: 'allow_deletions', label: 'Dal silme serbest' },
+const BRANCH_BOOL_FIELDS: { key: BranchBoolKey; labelKey: string }[] = [
+  { key: 'require_code_owner_review', labelKey: 'repoSettings.branchBool.codeOwners' },
+  { key: 'dismiss_stale_reviews', labelKey: 'repoSettings.branchBool.dismissStale' },
+  { key: 'require_conversation_resolution', labelKey: 'repoSettings.branchBool.conversation' },
+  { key: 'allow_force_push', labelKey: 'repoSettings.branchBool.forcePush' },
+  { key: 'allow_deletions', labelKey: 'repoSettings.branchBool.deletions' },
 ]
 
 type Tri = 'inherit' | 'on' | 'off'
@@ -57,7 +61,11 @@ interface Props {
   config: RepoConfig
   /** Org varsayılanındaki dal adları — "dala geri koruma ekle" için. */
   defaultBranches: string[]
+  /** Org varsayılan etiket seti — miras önizlemesi ve "ez"e başlangıç için. */
+  defaultLabels: RepoLabel[]
   busy: boolean
+  /** Kaydet butonunun metni; toplu modda "Sepete ekle" geçilir. Varsayılan "PR oluştur". */
+  primaryLabel?: string
   onCancel: () => void
   onSave: (changes: Record<string, YamlValue | undefined>, details: string[]) => void
 }
@@ -66,10 +74,13 @@ export function RepoSettingsDialog({
   repoName,
   config,
   defaultBranches,
+  defaultLabels,
   busy,
+  primaryLabel = 'PR oluştur',
   onCancel,
   onSave,
 }: Props) {
+  const t = useT()
   const [description, setDescription] = useState(config.description ?? '')
   const [language, setLanguage] = useState<Language>(config.language)
   const [visibility, setVisibility] = useState<'inherit' | 'public' | 'private'>(
@@ -105,6 +116,13 @@ export function RepoSettingsDialog({
     })),
   )
 
+  // Etiketler: override kapalıysa org varsayılanı miras alınır. Açılınca org
+  // setinden bir kopyayla başlanır (boş listeden değil) — düzenlemesi kolay olsun.
+  const [overrideLabels, setOverrideLabels] = useState(Boolean(config.labels))
+  const [labels, setLabels] = useState<RepoLabel[]>(() =>
+    (config.labels ?? []).map((l) => ({ ...l })),
+  )
+
   const [error, setError] = useState<string | null>(null)
 
   const branchNames = useMemo(() => {
@@ -129,6 +147,16 @@ export function RepoSettingsDialog({
 
   function patchBranch(name: string, patch: Partial<ProtectedBranchRule>) {
     setBranches((prev) => ({ ...prev, [name]: { ...(prev[name] ?? {}), ...patch } }))
+  }
+
+  function toggleOverrideLabels(on: boolean) {
+    setOverrideLabels(on)
+    // İlk kez ezerken boş listeyle değil, org setinin kopyasıyla başla.
+    if (on && labels.length === 0) setLabels(defaultLabels.map((l) => ({ ...l })))
+  }
+
+  function patchLabel(index: number, patch: Partial<RepoLabel>) {
+    setLabels((prev) => prev.map((l, i) => (i === index ? { ...l, ...patch } : l)))
   }
 
   function save() {
@@ -221,31 +249,43 @@ export function RepoSettingsDialog({
       details.push('CODEOWNERS kuralları güncellendi')
     }
 
-    if (!details.length) return setError('Hiçbir alan değişmedi.')
+    // labels — override kapalıysa anahtar silinir (org varsayılanı miras); açıksa
+    // temizlenmiş liste yazılır (adsız satırlar düşer, renk normalize edilir).
+    const nextLabels = overrideLabels ? cleanLabels(labels) : undefined
+    if (!deepEqual(nextLabels ?? null, config.labels ?? null)) {
+      changes.labels = nextLabels as unknown as YamlValue | undefined
+      details.push(
+        overrideLabels
+          ? `Etiket seti bu repoya özel yapıldı (${nextLabels?.length ?? 0} etiket)`
+          : 'Etiket ezmesi kaldırıldı — org varsayılanı miras alınacak',
+      )
+    }
+
+    if (!details.length) return setError(t('repoSettings.noChanges'))
     onSave(changes, details)
   }
 
   return (
     <Modal
-      title={`Repo ayarları — ${repoName}`}
+      title={t('repoSettings.dialogTitle', { name: repoName })}
       onClose={busy ? () => undefined : onCancel}
       footer={
         <>
           <button type="button" className="btn" onClick={onCancel} disabled={busy}>
-            Vazgeç
+            {t('repoSettings.cancel')}
           </button>
           <button type="button" className="btn btn-primary" onClick={save} disabled={busy}>
             {busy && <span className="spinner" aria-hidden="true" />}
-            PR oluştur
+            {primaryLabel}
           </button>
         </>
       }
     >
       <div className="stack" style={{ gap: 'var(--sp-5)' }}>
-        <Section title="Temel">
+        <Section title={t('repoSettings.sectionBasic')}>
           <div className="field">
             <label className="label" htmlFor="rs-description">
-              Açıklama
+              {t('repoSettings.labelDescription')}
             </label>
             <textarea
               id="rs-description"
@@ -256,7 +296,7 @@ export function RepoSettingsDialog({
           </div>
           <div className="field">
             <label className="label" htmlFor="rs-language">
-              Programlama dili
+              {t('repoSettings.labelLanguage')}
             </label>
             <select
               id="rs-language"
@@ -266,17 +306,17 @@ export function RepoSettingsDialog({
             >
               {LANGUAGES.map((l) => (
                 <option key={l} value={l}>
-                  {l}
+                  {languageLabel(l)}
                 </option>
               ))}
             </select>
           </div>
         </Section>
 
-        <Section title="Repo ayarları">
+        <Section title={t('repoSettings.sectionRepo')}>
           <div className="field">
             <label className="label" htmlFor="rs-visibility">
-              Görünürlük
+              {t('repoSettings.labelVisibility')}
             </label>
             <select
               id="rs-visibility"
@@ -284,47 +324,48 @@ export function RepoSettingsDialog({
               value={visibility}
               onChange={(e) => setVisibility(e.target.value as typeof visibility)}
             >
-              <option value="inherit">Varsayılan (org)</option>
+              <option value="inherit">{t('repoSettings.optInheritOrg')}</option>
               <option value="public">public</option>
               <option value="private">private</option>
             </select>
           </div>
           <div className="field">
             <label className="label" htmlFor="rs-default-branch">
-              Varsayılan dal
+              {t('repoSettings.labelDefaultBranch')}
             </label>
             <input
               id="rs-default-branch"
               className="input"
               value={defaultBranch}
-              placeholder="varsayılan (org)"
+              placeholder={t('repoSettings.phDefaultBranch')}
               onChange={(e) => setDefaultBranch(e.target.value)}
             />
           </div>
-          <TriField label="Arşivlenmiş" value={archived} onChange={setArchived} />
-          <TriField label="Issues açık" value={hasIssues} onChange={setHasIssues} />
-          <TriField label="Projects açık" value={hasProjects} onChange={setHasProjects} />
-          <TriField label="Wiki açık" value={hasWiki} onChange={setHasWiki} />
+          <TriField label={t('repoSettings.triArchived')} value={archived} onChange={setArchived} />
+          <TriField label={t('repoSettings.triIssues')} value={hasIssues} onChange={setHasIssues} />
+          <TriField
+            label={t('repoSettings.triProjects')}
+            value={hasProjects}
+            onChange={setHasProjects}
+          />
+          <TriField label={t('repoSettings.triWiki')} value={hasWiki} onChange={setHasWiki} />
         </Section>
 
-        <Section title="Güvenlik">
+        <Section title={t('repoSettings.sectionSecurity')}>
           <TriField
-            label="Dependabot uyarıları (vulnerability_alerts)"
+            label={t('repoSettings.triVulnAlerts')}
             value={vulnAlerts}
             onChange={setVulnAlerts}
           />
           <TriField
-            label="Secret scanning + push protection"
+            label={t('repoSettings.triSecretScanning')}
             value={secretScanning}
             onChange={setSecretScanning}
           />
-          <p className="hint">
-            secret scanning yalnızca public repo'da ücretsiz; private repo GHAS ister,
-            modül sessizce atlar.
-          </p>
+          <p className="hint">{t('repoSettings.hintSecretScanning')}</p>
         </Section>
 
-        <Section title="Şablon dosyaları">
+        <Section title={t('repoSettings.sectionTemplateFiles')}>
           {FILE_KEYS.map((key) => (
             <div className="field" key={key}>
               <label className="label" htmlFor={`rs-file-${key}`}>
@@ -341,7 +382,7 @@ export function RepoSettingsDialog({
                   }))
                 }
               >
-                <option value="inherit">Varsayılan</option>
+                <option value="inherit">{t('repoSettings.optDefault')}</option>
                 <option value="strict">strict</option>
                 <option value="seed">seed</option>
                 <option value="none">none</option>
@@ -350,14 +391,14 @@ export function RepoSettingsDialog({
           ))}
         </Section>
 
-        <Section title="Workflow'lar">
+        <Section title={t('repoSettings.sectionWorkflows')}>
           <label className="row" style={{ gap: 'var(--sp-2)', fontSize: 'var(--text-sm)' }}>
             <input
               type="checkbox"
               checked={overrideWorkflows}
               onChange={(e) => setOverrideWorkflows(e.target.checked)}
             />
-            Org varsayılanını ez
+            {t('repoSettings.overrideOrgDefault')}
           </label>
           {overrideWorkflows &&
             WORKFLOW_KEYS.map((wf) => (
@@ -379,14 +420,11 @@ export function RepoSettingsDialog({
               </label>
             ))}
           {overrideWorkflows && !workflows.includes('ci') && (
-            <p className="hint">
-              ⚠️ `ci` yoksa `ci/test` status check'i hiç raporlanmaz — dal koruması
-              onu bekliyorsa PR'lar takılır.
-            </p>
+            <p className="hint">{t('repoSettings.hintCi')}</p>
           )}
         </Section>
 
-        <Section title="Dal koruması">
+        <Section title={t('repoSettings.sectionBranchProtection')}>
           {branchNames.map((name) => {
             const state = branchState(name)
             const rule = state === 'custom' ? branches[name] ?? {} : {}
@@ -402,16 +440,16 @@ export function RepoSettingsDialog({
                     value={state}
                     onChange={(e) => setBranchStateFor(name, e.target.value as BranchState)}
                   >
-                    <option value="default">Org varsayılanı</option>
-                    <option value="custom">Özel kural</option>
-                    <option value="removed">Korumayı kaldır (null)</option>
+                    <option value="default">{t('repoSettings.optOrgDefault')}</option>
+                    <option value="custom">{t('repoSettings.optCustomRule')}</option>
+                    <option value="removed">{t('repoSettings.optRemoveProtection')}</option>
                   </select>
                 </div>
 
                 {state === 'custom' && (
                   <div className="stack" style={{ gap: 'var(--sp-2)' }}>
                     <label className="row" style={{ gap: 'var(--sp-2)', fontSize: 'var(--text-sm)' }}>
-                      Onay sayısı
+                      {t('repoSettings.labelApprovalCount')}
                       <input
                         type="number"
                         min={0}
@@ -423,7 +461,7 @@ export function RepoSettingsDialog({
                         }
                       />
                     </label>
-                    {BRANCH_BOOL_FIELDS.map(({ key, label }) => (
+                    {BRANCH_BOOL_FIELDS.map(({ key, labelKey }) => (
                       <label
                         key={key}
                         className="row"
@@ -434,11 +472,11 @@ export function RepoSettingsDialog({
                           checked={Boolean(rule[key])}
                           onChange={(e) => patchBranch(name, { [key]: e.target.checked })}
                         />
-                        {label}
+                        {t(labelKey)}
                       </label>
                     ))}
                     <label className="field">
-                      <span className="label">Status check'ler (virgülle)</span>
+                      <span className="label">{t('repoSettings.labelStatusChecks')}</span>
                       <input
                         className="input"
                         value={(rule.require_status_checks ?? []).join(', ')}
@@ -451,7 +489,7 @@ export function RepoSettingsDialog({
                       />
                     </label>
                     <label className="field">
-                      <span className="label">Push izinli roller (virgülle)</span>
+                      <span className="label">{t('repoSettings.labelPushRoles')}</span>
                       <input
                         className="input"
                         value={(rule.push_allowed_roles ?? []).join(', ')}
@@ -468,7 +506,7 @@ export function RepoSettingsDialog({
           })}
         </Section>
 
-        <Section title="CODEOWNERS (yol → kişiler)">
+        <Section title={t('repoSettings.sectionCodeowners')}>
           {codeOwners.map((row, i) => (
             <div key={i} className="row" style={{ gap: 'var(--sp-2)' }}>
               <input
@@ -494,7 +532,7 @@ export function RepoSettingsDialog({
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
-                aria-label="Satırı kaldır"
+                aria-label={t('repoSettings.ariaRemoveRow')}
                 onClick={() => setCodeOwners((prev) => prev.filter((_, j) => j !== i))}
               >
                 ✕
@@ -506,8 +544,84 @@ export function RepoSettingsDialog({
             className="btn btn-sm"
             onClick={() => setCodeOwners((prev) => [...prev, { path: '', logins: '' }])}
           >
-            + Yol ekle
+            + {t('repoSettings.addPath')}
           </button>
+        </Section>
+
+        <Section title={t('repoSettings.sectionLabels')}>
+          <label className="row" style={{ gap: 'var(--sp-2)', fontSize: 'var(--text-sm)' }}>
+            <input
+              type="checkbox"
+              checked={overrideLabels}
+              onChange={(e) => toggleOverrideLabels(e.target.checked)}
+            />
+            {t('repoSettings.overrideLabelsToggle')}
+          </label>
+
+          {!overrideLabels ? (
+            <div className="stack" style={{ gap: 'var(--sp-2)' }}>
+              <p className="hint">
+                {t('repoSettings.hintInheritLabels', { count: defaultLabels.length })}
+              </p>
+              {defaultLabels.length > 0 && (
+                <div className="row" style={{ flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
+                  {defaultLabels.map((label) => (
+                    <LabelChip key={label.name} label={label} />
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="stack" style={{ gap: 'var(--sp-2)' }}>
+              {labels.length === 0 && (
+                <p className="hint">
+                  {t('repoSettings.hintEmptyLabelsPre')}
+                  <code>labels: []</code>
+                  {t('repoSettings.hintEmptyLabelsPost')}
+                </p>
+              )}
+              {labels.map((row, i) => (
+                <div key={i} className="row" style={{ gap: 'var(--sp-2)', alignItems: 'center' }}>
+                  <input
+                    type="color"
+                    aria-label={t('repoSettings.ariaColor')}
+                    style={{ width: 40, height: 32, padding: 0, flex: 'none' }}
+                    value={`#${(row.color || 'ededed').replace('#', '')}`}
+                    onChange={(e) => patchLabel(i, { color: e.target.value.replace('#', '') })}
+                  />
+                  <input
+                    className="input"
+                    placeholder={t('repoSettings.phLabelName')}
+                    value={row.name}
+                    onChange={(e) => patchLabel(i, { name: e.target.value })}
+                  />
+                  <input
+                    className="input"
+                    placeholder={t('repoSettings.phLabelDescription')}
+                    value={row.description ?? ''}
+                    onChange={(e) => patchLabel(i, { description: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    aria-label={t('repoSettings.ariaRemoveLabel')}
+                    onClick={() => setLabels((prev) => prev.filter((_, j) => j !== i))}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() =>
+                  setLabels((prev) => [...prev, { name: '', color: 'ededed', description: '' }])
+                }
+              >
+                + {t('repoSettings.addLabel')}
+              </button>
+            </div>
+          )}
         </Section>
 
         {error && (
@@ -538,6 +652,7 @@ function TriField({
   value: Tri
   onChange: (t: Tri) => void
 }) {
+  const t = useT()
   return (
     <div className="field">
       <label className="label">{label}</label>
@@ -546,9 +661,9 @@ function TriField({
         value={value}
         onChange={(e) => onChange(e.target.value as Tri)}
       >
-        <option value="inherit">Varsayılan</option>
-        <option value="on">Açık</option>
-        <option value="off">Kapalı</option>
+        <option value="inherit">{t('repoSettings.optDefault')}</option>
+        <option value="on">{t('repoSettings.triOn')}</option>
+        <option value="off">{t('repoSettings.triOff')}</option>
       </select>
     </div>
   )
@@ -570,6 +685,24 @@ function pruneEmptyRules(
     } else if (rule && Object.keys(rule).length) {
       out[name] = rule
     }
+  }
+  return out
+}
+
+/**
+ * Etiket satırlarını yazıma hazırlar: adsız satırları at, rengi `#`'siz küçük
+ * harf hex'e normalize et, boş açıklamayı düşür. GitHub/engine bu formatı bekler.
+ */
+function cleanLabels(rows: RepoLabel[]): RepoLabel[] {
+  const out: RepoLabel[] = []
+  for (const row of rows) {
+    const name = row.name.trim()
+    if (!name) continue
+    const color = row.color.replace('#', '').trim().toLowerCase() || 'ededed'
+    const label: RepoLabel = { name, color }
+    const description = row.description?.trim()
+    if (description) label.description = description
+    out.push(label)
   }
   return out
 }

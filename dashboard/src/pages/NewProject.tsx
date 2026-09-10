@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { LanguageBadge } from '../components/LanguageBadge'
+import { LanguageBadge, languageLabel } from '../components/LanguageBadge'
+import { MemberPicker } from '../components/MemberPicker'
 import { EmptyState } from '../components/States'
-import { UsernameField } from '../components/UsernameField'
 import { useAuth, useClient } from '../hooks/useAuth'
 import { useConfig } from '../hooks/useProjects'
 import { useProposal } from '../hooks/useProposal'
@@ -11,11 +11,13 @@ import { PATHS } from '../services/env'
 import { validateDescription, validateRepoName } from '../services/validation'
 import { serializeRepoConfig } from '../services/yaml'
 import { LANGUAGES, type Language, type RepoConfig } from '../types/config'
+import { useT } from '../i18n'
 
-const STEPS = ['Repo bilgileri', 'Dil', 'Mentör'] as const
+const STEPS = ['repoInfo', 'language', 'team'] as const
 
 export function NewProject() {
-  const { projects, privileged } = useConfig()
+  const t = useT()
+  const { projects, privileged, people } = useConfig()
   const { user } = useAuth()
   const client = useClient()
   const { busy, submit } = useProposal()
@@ -25,8 +27,9 @@ export function NewProject() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [language, setLanguage] = useState<Language>('typescript')
-  const [mentor, setMentor] = useState('')
-  const [mentorVerified, setMentorVerified] = useState(false)
+  const [mentors, setMentors] = useState<string[]>([])
+  const [developers, setDevelopers] = useState<string[]>([])
+  const [autoInit, setAutoInit] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const existingNames = useMemo(() => projects.map((project) => project.name), [projects])
@@ -34,21 +37,27 @@ export function NewProject() {
   const draft: RepoConfig = {
     description: description.trim(),
     language,
-    mentors: mentor.trim() ? [mentor.trim()] : [],
-    developers: [],
+    mentors,
+    developers,
+    // auto_init yalnızca varsayılandan farklıysa (false) yazılır — boş repo,
+    // mevcut kod push'lanacak senaryosu.
+    ...(autoInit ? {} : { auto_init: false }),
   }
 
-  const preview = useMemo(() => serializeRepoConfig(draft), [description, language, mentor])
+  const preview = useMemo(
+    () => serializeRepoConfig(draft),
+    [description, language, mentors, developers, autoInit],
+  )
 
   if (!isHeadOfEngineering(user?.login ?? '', privileged)) {
     return (
       <EmptyState
         icon="🔒"
-        title="Bu sayfa head of engineering'lere açık"
-        description="Yeni proje açma yetkisi organizasyon rolüne bağlıdır. Mentörler mevcut projelerine kişi ekleyebilir."
+        title={t('newProject.denied.title')}
+        description={t('newProject.denied.desc')}
         action={
           <Link className="btn" to="/">
-            Projelere dön
+            {t('newProject.denied.back')}
           </Link>
         }
       />
@@ -65,8 +74,8 @@ export function NewProject() {
       if (descriptionError) return setError(descriptionError)
     }
 
-    if (step === 2 && !mentor.trim()) {
-      return setError('Her repo\'nun en az bir mentörü olmalı.')
+    if (step === 2 && mentors.length === 0) {
+      return setError(t('newProject.mentorRequired'))
     }
 
     setStep((current) => Math.min(current + 1, STEPS.length))
@@ -74,12 +83,7 @@ export function NewProject() {
 
   async function create() {
     setError(null)
-
-    if (!mentorVerified) {
-      const exists = await client.userExists(mentor.trim())
-      if (!exists) return setError('Mentör kullanıcı adı GitHub\'da bulunamadı.')
-    }
-
+    // Üyeler zaten org üyesi (picker'dan) — ayrıca GitHub doğrulaması gerekmez.
     const result = await submit(
       () => proposeNewProject(client, name.trim(), draft),
       `${name.trim()} projesi oluşturuluyor`,
@@ -92,13 +96,10 @@ export function NewProject() {
     <div className="stack" style={{ gap: 'var(--sp-6)', maxWidth: 720 }}>
       <div>
         <Link className="subtle" to="/">
-          ← Projeler
+          {t('newProject.backLink')}
         </Link>
-        <h1 style={{ marginTop: 'var(--sp-3)' }}>Yeni proje</h1>
-        <p className="muted">
-          Form bir config dosyası üretir ve PR açar. Repo, PR merge edildikten sonra
-          Terraform tarafından oluşturulur.
-        </p>
+        <h1 style={{ marginTop: 'var(--sp-3)' }}>{t('newProject.title')}</h1>
+        <p className="muted">{t('newProject.intro')}</p>
       </div>
 
       <div className="steps">
@@ -109,7 +110,7 @@ export function NewProject() {
               className={`step ${index === step ? 'current' : index < step ? 'done' : ''}`}
             >
               <span className="step-num">{index < step ? '✓' : index + 1}</span>
-              <span>{title}</span>
+              <span>{t(`newProject.steps.${title}`)}</span>
             </div>
           </div>
         ))}
@@ -120,14 +121,14 @@ export function NewProject() {
           <>
             <div className="field">
               <label className="label" htmlFor="repo-name">
-                Repo adı
+                {t('newProject.repoName')}
               </label>
               <input
                 id="repo-name"
                 className="input"
                 value={name}
                 autoComplete="off"
-                placeholder="odeme-servisi"
+                placeholder={t('newProject.repoNamePlaceholder')}
                 aria-invalid={Boolean(error)}
                 onChange={(event) => {
                   setName(event.target.value)
@@ -135,7 +136,7 @@ export function NewProject() {
                 }}
               />
               <span className="hint">
-                Küçük harf, rakam ve tire. Dosya adı da bu olur:{' '}
+                {t('newProject.nameHint')}{' '}
                 <code>
                   {PATHS.repositories}/{name.trim() || '<ad>'}.yml
                 </code>
@@ -144,25 +145,54 @@ export function NewProject() {
 
             <div className="field">
               <label className="label" htmlFor="repo-description">
-                Açıklama
+                {t('newProject.description')}
               </label>
               <textarea
                 id="repo-description"
                 className="textarea"
                 value={description}
-                placeholder="Ödeme geçidi entegrasyon servisi"
+                placeholder={t('newProject.descriptionPlaceholder')}
                 onChange={(event) => {
                   setDescription(event.target.value)
                   setError(null)
                 }}
               />
             </div>
+
+            <div className="field">
+              <span className="label">{t('newProject.start')}</span>
+              <div className="row" style={{ flexWrap: 'wrap', gap: 'var(--sp-3)' }}>
+                <button
+                  type="button"
+                  className={autoInit ? 'btn btn-primary' : 'btn'}
+                  onClick={() => setAutoInit(true)}
+                  aria-pressed={autoInit}
+                >
+                  {t('newProject.startWithCommit')}
+                </button>
+                <button
+                  type="button"
+                  className={!autoInit ? 'btn btn-primary' : 'btn'}
+                  onClick={() => setAutoInit(false)}
+                  aria-pressed={!autoInit}
+                >
+                  {t('newProject.emptyRepo')}
+                </button>
+              </div>
+              <span className="hint">
+                {t('newProject.startHint.s1')}
+                <strong>{t('newProject.startHint.b1')}</strong>
+                {t('newProject.startHint.s2')}
+                <code>git push --mirror</code>
+                {t('newProject.startHint.s3')}
+              </span>
+            </div>
           </>
         )}
 
         {step === 1 && (
           <div className="field">
-            <span className="label">Programlama dili</span>
+            <span className="label">{t('newProject.languageLabel')}</span>
             <div className="row" style={{ flexWrap: 'wrap', gap: 'var(--sp-3)' }}>
               {LANGUAGES.map((item) => (
                 <button
@@ -172,45 +202,58 @@ export function NewProject() {
                   onClick={() => setLanguage(item)}
                   aria-pressed={language === item}
                 >
-                  {item}
+                  {languageLabel(item)}
                 </button>
               ))}
             </div>
-            <span className="hint">
-              Dil, CI şablonunun ve repo etiketinin seçilmesinde kullanılır.
-            </span>
+            <span className="hint">{t('newProject.languageHint')}</span>
           </div>
         )}
 
         {step === 2 && (
-          <UsernameField
-            label="İlk mentör (GitHub kullanıcı adı)"
-            value={mentor}
-            onChange={setMentor}
-            onVerified={setMentorVerified}
-            hint="Mentör repo'da admin yetkisi alır. Sonradan değiştirilebilir."
-          />
+          <div className="stack" style={{ gap: 'var(--sp-5)' }}>
+            <MemberPicker
+              label={t('newProject.mentorsLabel')}
+              all={people?.members ?? []}
+              selected={mentors}
+              onChange={setMentors}
+              exclude={developers}
+              hint={t('newProject.mentorsHint')}
+            />
+            <MemberPicker
+              label={t('newProject.developersLabel')}
+              all={people?.members ?? []}
+              selected={developers}
+              onChange={setDevelopers}
+              exclude={mentors}
+              hint={t('newProject.developersHint')}
+            />
+          </div>
         )}
 
         {step === 3 && (
           <div className="stack">
-            <h3>Önizleme</h3>
+            <h3>{t('newProject.preview')}</h3>
             <p className="subtle">
-              Şu dosya oluşturulacak:{' '}
+              {t('newProject.previewFile')}{' '}
               <code>
                 {PATHS.repositories}/{name.trim()}.yml
               </code>
             </p>
 
-            <div className="row" style={{ flexWrap: 'wrap' }}>
+            <div className="row" style={{ flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
               <LanguageBadge language={language} />
-              <span className="badge">mentör: {mentor.trim()}</span>
+              <span className="badge">{t('newProject.mentorCount', { n: mentors.length })}</span>
+              <span className="badge">{t('newProject.developerCount', { n: developers.length })}</span>
             </div>
 
             <pre className="code-block">{preview}</pre>
 
-            <p className="subtle">
-              PR açılacak — merge edilene kadar GitHub'da hiçbir şey değişmez.
+            <p className="subtle">{t('newProject.previewPr')}</p>
+            <p className="hint">
+              {t('newProject.previewHint.s1')}
+              <strong>⚙ {t('newProject.previewHint.settings')}</strong>
+              {t('newProject.previewHint.s2')}
             </p>
           </div>
         )}
@@ -228,12 +271,12 @@ export function NewProject() {
             onClick={() => setStep((current) => Math.max(0, current - 1))}
             disabled={step === 0 || busy}
           >
-            Geri
+            {t('newProject.back')}
           </button>
 
           {step < STEPS.length ? (
             <button type="button" className="btn btn-primary" onClick={next}>
-              Devam
+              {t('newProject.next')}
             </button>
           ) : (
             <button
@@ -243,7 +286,7 @@ export function NewProject() {
               disabled={busy}
             >
               {busy && <span className="spinner" aria-hidden="true" />}
-              Projeyi oluştur (PR aç)
+              {t('newProject.create')}
             </button>
           )}
         </div>

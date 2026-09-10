@@ -3,7 +3,35 @@
  * Şema kaynağı: terraform/config/repository.example.yml ve organization.yml.
  */
 
-export const LANGUAGES = ['go', 'python', 'typescript', 'php'] as const
+export const LANGUAGES = [
+  'go',
+  'python',
+  'typescript',
+  'javascript',
+  'php',
+  'java',
+  'cpp',
+  'csharp',
+  'c',
+  'rust',
+  'ruby',
+  'kotlin',
+  'swift',
+  'scala',
+  'dart',
+  'elixir',
+  'shell',
+  'hcl',
+  'html',
+  'css',
+  'vue',
+  'lua',
+  'r',
+  'perl',
+  'haskell',
+  'clojure',
+  'groovy',
+] as const
 export type Language = (typeof LANGUAGES)[number]
 
 export type Visibility = 'public' | 'private'
@@ -35,6 +63,8 @@ export interface RepoConfig {
   language: Language
   mentors: string[]
   developers?: string[]
+  /** Salt-okunur (pull) erişimi olan kişiler. Org config'inde `viewer` rolü. */
+  viewers?: string[]
   visibility?: Visibility
   archived?: boolean
   has_issues?: boolean
@@ -88,8 +118,18 @@ export interface OrgDefaults {
   vulnerability_alerts?: boolean
   secret_scanning?: boolean
   protected_branches?: Record<string, ProtectedBranchRule>
+  /** Şablon dosyası → dağıtım modu (strict/seed/none). */
+  files?: Record<string, TemplateMode>
   workflows?: string[]
   labels?: RepoLabel[]
+}
+
+/** organization.yml → profile: GitHub UI'da görünen org kimliği (kozmetik). */
+export interface OrgProfile {
+  name?: string
+  description?: string
+  blog?: string
+  location?: string
 }
 
 export interface OrgConfig {
@@ -98,6 +138,7 @@ export interface OrgConfig {
   roles: Record<string, OrgRoleDefinition>
   org_admin_team: string
   defaults: OrgDefaults
+  profile?: OrgProfile
 }
 
 /**
@@ -120,7 +161,7 @@ export interface PrivilegedConfig {
   roles: Record<string, string[]>
 }
 
-export type ProjectRole = 'mentor' | 'developer'
+export type ProjectRole = 'mentor' | 'developer' | 'viewer'
 
 /** "Bu kişi hangi projede, hangi rolde?" görünümünün satırı. */
 export interface Membership {

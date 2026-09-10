@@ -1,29 +1,75 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { LanguageBadge } from '../components/LanguageBadge'
 import { ConfirmDialog } from '../components/Modal'
 import { EmptyState, Skeleton } from '../components/States'
+import { useT } from '../i18n'
 import { useAuth, useClient } from '../hooks/useAuth'
+import { useCart } from '../hooks/useCart'
 import { useConfig } from '../hooks/useProjects'
 import { useProposal } from '../hooks/useProposal'
 import {
+  canManageProject,
   isHeadOfEngineering,
   isOrgOwner,
   membershipsFor,
   orgStanding,
-  proposePeopleUpdate,
+  proposeOrgRemoval,
+  proposeRepoConfigUpdate,
 } from '../services/configRepo'
+import { PATHS } from '../services/env'
+import { assertCanRemoveMentor } from '../services/validation'
+import { applyEdits, parsePeopleConfig, parseRepoConfig, serializePeopleConfig } from '../services/yaml'
+import type { ProjectRole } from '../types/config'
+
+const ROLE_LABEL: Record<ProjectRole, string> = {
+  mentor: 'Mentör',
+  developer: 'Developer',
+  viewer: 'Viewer',
+}
+const LIST_KEY: Record<ProjectRole, 'mentors' | 'developers' | 'viewers'> = {
+  mentor: 'mentors',
+  developer: 'developers',
+  viewer: 'viewers',
+}
+const ROLE_ORDER: ProjectRole[] = ['mentor', 'developer', 'viewer']
 
 export function MemberDetail() {
+  const t = useT()
   const { login = '' } = useParams<{ login: string }>()
   const { projects, people, privileged, loading } = useConfig()
   const { user } = useAuth()
   const client = useClient()
+  const { batchMode, add: addToCart } = useCart()
   const { busy, submit } = useProposal()
   const [confirmRemove, setConfirmRemove] = useState(false)
+  const [roleEdit, setRoleEdit] = useState<{
+    project: string
+    from: ProjectRole
+    to: ProjectRole | 'remove'
+  } | null>(null)
 
   const memberships = membershipsFor(login, projects)
   const standing = orgStanding(login, people, privileged)
+
+  // "Org'dan tamamen çıkar" öncesi: kişinin bulunduğu repolar + o reponun TEK
+  // mentörü mü (öyleyse çıkarınca repo mentörsüz kalır → engine plan'da reddeder).
+  const affectedRepos = useMemo(() => {
+    const key = login.toLowerCase()
+    const inList = (arr?: string[]) => (arr ?? []).some((l) => l.toLowerCase() === key)
+    return projects
+      .filter((p) => inList(p.config.mentors) || inList(p.config.developers) || inList(p.config.viewers))
+      .map((p) => {
+        const roles: string[] = []
+        const isMentor = inList(p.config.mentors)
+        if (isMentor) roles.push('mentör')
+        if (inList(p.config.developers)) roles.push('developer')
+        if (inList(p.config.viewers)) roles.push('viewer')
+        return { name: p.name, roles, soleMentor: isMentor && (p.config.mentors ?? []).length === 1 }
+      })
+  }, [projects, login])
+
+  const soleMentorRepos = affectedRepos.filter((r) => r.soleMentor)
 
   const canManageOrg =
     isHeadOfEngineering(user?.login ?? '', privileged) ||
@@ -38,19 +84,119 @@ export function MemberDetail() {
     )
   }
 
+  /** Toplu mod: org'dan tam çıkarma cascade'ini sepete koyar (her dosya bir öğe). */
+  function stageRemoveFromOrg() {
+    const key = login.toLowerCase()
+    const has = (arr?: string[]) => (arr ?? []).some((l) => l.toLowerCase() === key)
+    const affected = projects.filter(
+      (p) => has(p.config.mentors) || has(p.config.developers) || has(p.config.viewers),
+    )
+    for (const project of affected) {
+      addToCart({
+        file: project.path,
+        summary: `${project.name}: −${login} (org çıkarma)`,
+        detail: `\`${login}\` → \`${project.name}\` rollerinden çıkarıldı`,
+        transform: (text) => {
+          const cfg = parseRepoConfig(text)
+          const drop = (arr?: string[]) => (arr ?? []).filter((l) => l.toLowerCase() !== key)
+          const edits: Record<string, string[]> = {}
+          if (has(cfg.mentors)) edits.mentors = drop(cfg.mentors)
+          if (has(cfg.developers)) edits.developers = drop(cfg.developers)
+          if (has(cfg.viewers)) edits.viewers = drop(cfg.viewers)
+          return applyEdits(text, edits)
+        },
+      })
+    }
+    addToCart({
+      file: PATHS.people,
+      summary: `people.yml: −${login} (org üyeliği)`,
+      detail: `\`${login}\` people.yml üye listesinden çıkarıldı`,
+      transform: (text) => {
+        const { members } = parsePeopleConfig(text)
+        return serializePeopleConfig(members.filter((l) => l.toLowerCase() !== key))
+      },
+    })
+    setConfirmRemove(false)
+  }
+
   async function removeFromOrg() {
+    if (batchMode) return stageRemoveFromOrg()
     const result = await submit(
-      () => proposePeopleUpdate({ client, remove: login }),
-      `${login} org üyeliğinden çıkarıldı`,
+      () => proposeOrgRemoval({ client, login, projects }),
+      `${login} organizasyondan çıkarıldı`,
     )
     if (result) setConfirmRemove(false)
+  }
+
+  /** Toplu mod: rol değişimini sepete koyar (tek repo dosyası). */
+  function stageRoleChange() {
+    if (!roleEdit) return
+    const project = projects.find((p) => p.name === roleEdit.project)
+    if (!project) return
+    const { from, to } = roleEdit
+    const key = login.toLowerCase()
+    addToCart({
+      file: project.path,
+      summary:
+        to === 'remove'
+          ? `${project.name}: −${login} (${ROLE_LABEL[from]})`
+          : `${project.name}: ${login} ${ROLE_LABEL[from]}→${ROLE_LABEL[to]}`,
+      detail:
+        to === 'remove'
+          ? `\`${login}\` **${ROLE_LABEL[from]}** rolünden çıkarıldı (${project.name})`
+          : `\`${login}\` **${ROLE_LABEL[from]}** → **${ROLE_LABEL[to]}** (${project.name})`,
+      transform: (text) => {
+        const cfg = parseRepoConfig(text)
+        const drop = (arr?: string[]) => (arr ?? []).filter((l) => l.toLowerCase() !== key)
+        const edits: Record<string, string[]> = {}
+        edits[LIST_KEY[from]] = drop(cfg[LIST_KEY[from]])
+        if (to !== 'remove') edits[LIST_KEY[to]] = [...drop(cfg[LIST_KEY[to]]), login]
+        return applyEdits(text, edits)
+      },
+    })
+    setRoleEdit(null)
+  }
+
+  async function applyRoleChange() {
+    if (!roleEdit) return
+    if (batchMode) return stageRoleChange()
+    const project = projects.find((p) => p.name === roleEdit.project)
+    if (!project) return
+    const { from, to } = roleEdit
+    const key = login.toLowerCase()
+    const drop = (arr?: string[]) => (arr ?? []).filter((l) => l.toLowerCase() !== key)
+
+    const result = await submit(
+      () =>
+        proposeRepoConfigUpdate({
+          client,
+          project,
+          edits: (cfg) => {
+            const changes: Record<string, string[]> = {}
+            changes[LIST_KEY[from]] = drop(cfg[LIST_KEY[from]])
+            if (to !== 'remove') changes[LIST_KEY[to]] = [...drop(cfg[LIST_KEY[to]]), login]
+            return changes
+          },
+          summary:
+            to === 'remove'
+              ? `${login} ${ROLE_LABEL[from]} listesinden çıkarıldı`
+              : `${login}: ${ROLE_LABEL[from]} → ${ROLE_LABEL[to]}`,
+          details: [
+            to === 'remove'
+              ? `\`${login}\` **${ROLE_LABEL[from]}** rolünden çıkarıldı`
+              : `\`${login}\` **${ROLE_LABEL[from]}** → **${ROLE_LABEL[to]}**`,
+          ],
+        }),
+      `${login} rolü güncellendi (${roleEdit.project})`,
+    )
+    if (result) setRoleEdit(null)
   }
 
   return (
     <div className="stack" style={{ gap: 'var(--sp-6)' }}>
       <div>
         <Link className="subtle" to="/">
-          ← Projeler
+          ← {t('memberDetail.projects')}
         </Link>
       </div>
 
@@ -65,16 +211,16 @@ export function MemberDetail() {
         <div className="stack" style={{ gap: 'var(--sp-1)' }}>
           <h1>{login}</h1>
           <div className="row" style={{ flexWrap: 'wrap' }}>
-            {standing.owner && <span className="badge badge-warning">org owner</span>}
+            {standing.owner && <span className="badge badge-warning">{t('memberDetail.orgOwner')}</span>}
             {standing.roles.map((role) => (
               <span key={role} className="badge badge-accent">
                 {role}
               </span>
             ))}
             {standing.member ? (
-              <span className="badge">org üyesi</span>
+              <span className="badge">{t('memberDetail.orgMember')}</span>
             ) : (
-              <span className="subtle">people.yml içinde kayıtlı değil</span>
+              <span className="subtle">{t('memberDetail.notInPeople')}</span>
             )}
             <a
               href={`https://github.com/${encodeURIComponent(login)}`}
@@ -82,7 +228,7 @@ export function MemberDetail() {
               rel="noreferrer"
               style={{ fontSize: 'var(--text-sm)' }}
             >
-              GitHub profili ↗
+              {t('memberDetail.githubProfile')} ↗
             </a>
           </div>
         </div>
@@ -92,20 +238,25 @@ export function MemberDetail() {
         <section className="card card-pad section">
           <div className="row-between">
             <div className="stack" style={{ gap: 'var(--sp-1)' }}>
-              <h2 style={{ fontSize: 'var(--text-lg)' }}>Organizasyon üyeliği</h2>
+              <h2 style={{ fontSize: 'var(--text-lg)' }}>{t('memberDetail.orgMembership')}</h2>
               <p className="subtle">
-                Çıkarmak kişiyi org'dan atmaz; rolü <code>member</code>a düşer. Yetki
-                (owner / head-of-engineering) buradan değiştirilemez — o{' '}
-                <code>privileged.yml</code> içindedir.
+                {t('memberDetail.orgMembershipDesc1')}
+                <strong>{t('memberDetail.fully')}</strong>
+                {t('memberDetail.orgMembershipDesc2')}
+                <code>people.yml</code>
+                {t('memberDetail.orgMembershipDesc3')}
+                {' '}
+                <code>privileged.yml</code>
+                {t('memberDetail.orgMembershipDesc4')}
               </p>
             </div>
             <button
               type="button"
-              className="btn btn-sm btn-danger"
+              className="btn btn-danger btn-sm"
               onClick={() => setConfirmRemove(true)}
               disabled={busy}
             >
-              Org üyeliğinden çıkar
+              {t('memberDetail.removeOrgFullyBtn')}
             </button>
           </div>
         </section>
@@ -113,39 +264,62 @@ export function MemberDetail() {
 
       <section className="card card-pad section">
         <h2 style={{ fontSize: 'var(--text-lg)' }}>
-          Projeler <span className="subtle">({memberships.length})</span>
+          {t('memberDetail.projects')} <span className="subtle">({memberships.length})</span>
         </h2>
 
         {memberships.length === 0 ? (
           <EmptyState
             icon="🗂️"
-            title="Bu kişi hiçbir projede görünmüyor"
-            description="Konfigürasyondaki mentör ve developer listelerinde adı geçmiyor."
+            title={t('memberDetail.emptyProjectsTitle')}
+            description={t('memberDetail.emptyProjectsDesc')}
           />
         ) : (
           <div className="table-scroll">
             <table className="rule-table">
               <thead>
                 <tr>
-                  <th>Proje</th>
-                  <th>Rol</th>
-                  <th>Dil</th>
+                  <th>{t('memberDetail.colProject')}</th>
+                  <th>{t('memberDetail.colRole')}</th>
+                  <th>{t('memberDetail.colLanguage')}</th>
                 </tr>
               </thead>
               <tbody>
                 {memberships.map(({ project, role }) => {
-                  const config = projects.find((item) => item.name === project)?.config
+                  const proj = projects.find((item) => item.name === project)
+                  const config = proj?.config
+                  const editable =
+                    proj != null &&
+                    !config?.archived &&
+                    canManageProject(user?.login ?? '', proj, privileged)
                   return (
                     <tr key={`${project}-${role}`}>
                       <td>
                         <Link to={`/projeler/${project}`}>{project}</Link>
                       </td>
                       <td>
-                        <span
-                          className={role === 'mentor' ? 'badge badge-accent' : 'badge'}
-                        >
-                          {role === 'mentor' ? 'Mentör' : 'Developer'}
-                        </span>
+                        {editable ? (
+                          <select
+                            className="select"
+                            value={role}
+                            disabled={busy}
+                            aria-label={t('memberDetail.roleInProject', { project })}
+                            onChange={(event) => {
+                              const to = event.target.value as ProjectRole | 'remove'
+                              if (to !== role) setRoleEdit({ project, from: role, to })
+                            }}
+                          >
+                            {ROLE_ORDER.map((r) => (
+                              <option key={r} value={r}>
+                                {ROLE_LABEL[r]}
+                              </option>
+                            ))}
+                            <option value="remove">{t('memberDetail.removeFromRepo')}</option>
+                          </select>
+                        ) : (
+                          <span className={role === 'mentor' ? 'badge badge-accent' : 'badge'}>
+                            {ROLE_LABEL[role]}
+                          </span>
+                        )}
                       </td>
                       <td>{config && <LanguageBadge language={config.language} />}</td>
                     </tr>
@@ -157,18 +331,111 @@ export function MemberDetail() {
         )}
       </section>
 
+      {roleEdit && (
+        <ConfirmDialog
+          title={t('memberDetail.roleChangeTitle', { project: roleEdit.project })}
+          message={
+            <div className="stack" style={{ gap: 'var(--sp-2)' }}>
+              <p style={{ margin: 0 }}>
+                <strong>{login}</strong>, <code>{roleEdit.project}</code>
+                {t('memberDetail.roleChangeRepoMid')}
+                {roleEdit.to === 'remove' ? (
+                  <>
+                    <strong>{ROLE_LABEL[roleEdit.from]}</strong>
+                    {t('memberDetail.roleChangeRemoveSuffix')}
+                  </>
+                ) : (
+                  <>
+                    <strong>{ROLE_LABEL[roleEdit.from]}</strong> →{' '}
+                    <strong>{ROLE_LABEL[roleEdit.to]}</strong>
+                  </>
+                )}
+                {t('memberDetail.roleChangePrNote')}
+              </p>
+
+              {(() => {
+                const cfg = projects.find((p) => p.name === roleEdit.project)?.config
+                const orphans =
+                  roleEdit.from === 'mentor' &&
+                  roleEdit.to !== 'mentor' &&
+                  cfg != null &&
+                  Boolean(assertCanRemoveMentor(cfg, login))
+                return orphans ? (
+                  <div
+                    className="card card-pad"
+                    style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)' }}
+                  >
+                    <p className="subtle" style={{ margin: 0 }}>
+                      ⚠️ {t('memberDetail.soleMentorWarnPre', { login })}
+                      <strong>{t('memberDetail.planRejected')}</strong>
+                      {t('memberDetail.soleMentorWarnPost')}
+                    </p>
+                  </div>
+                ) : null
+              })()}
+            </div>
+          }
+          confirmLabel={batchMode ? t('memberDetail.addToCart') : t('memberDetail.roleChangeConfirm')}
+          danger={roleEdit.to === 'remove'}
+          busy={busy}
+          onConfirm={() => void applyRoleChange()}
+          onCancel={() => setRoleEdit(null)}
+        />
+      )}
+
       {confirmRemove && (
         <ConfirmDialog
-          title={`${login} org üyeliğinden çıkarılsın mı?`}
+          title={t('memberDetail.removeOrgTitle', { login })}
           message={
-            <>
-              <strong>{login}</strong> <code>people.yml</code> üye listesinden çıkarılacak.
-              Bu bir PR açar; merge edilene kadar GitHub'da hiçbir şey değişmez. Kişinin
-              repo erişimleri ayrıca ilgili <code>repositories/*.yml</code> dosyalarından
-              kaldırılmalıdır.
-            </>
+            <div className="stack" style={{ gap: 'var(--sp-3)' }}>
+              <p style={{ margin: 0 }}>
+                <strong>{login}</strong>{t('memberDetail.removeOrgDesc1')}
+                <strong>{t('memberDetail.fully')}</strong>
+                {t('memberDetail.removeOrgDesc2')}
+                <code>people.yml</code>
+                {t('memberDetail.removeOrgDesc3')}{' '}
+                <span className="subtle">
+                  {t('memberDetail.removeOrgReversible')}
+                </span>
+              </p>
+
+              {affectedRepos.length > 0 ? (
+                <div className="stack" style={{ gap: 'var(--sp-1)' }}>
+                  <span className="meta-label">{t('memberDetail.reposToRemove')}</span>
+                  <ul className="subtle" style={{ margin: 0, paddingLeft: '1.2em' }}>
+                    {affectedRepos.map((r) => (
+                      <li key={r.name}>
+                        <code>{r.name}</code> — {r.roles.join(', ')}
+                        {r.soleMentor && ` ⚠️ ${t('memberDetail.soleMentorTag')}`}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="subtle" style={{ margin: 0 }}>
+                  {t('memberDetail.noRoleAnyRepo')}
+                </p>
+              )}
+
+              {soleMentorRepos.length > 0 && (
+                <div
+                  className="card card-pad"
+                  style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)' }}
+                >
+                  <div className="meta-label" style={{ color: 'var(--danger)' }}>
+                    {t('memberDetail.soleMentorCount', { n: soleMentorRepos.length })}
+                  </div>
+                  <p className="subtle" style={{ margin: '4px 0 0' }}>
+                    {soleMentorRepos.map((r) => r.name).join(', ')}
+                    {t('memberDetail.soleMentorReposMid')}
+                    <strong>{t('memberDetail.planRejected')}</strong>
+                    {t('memberDetail.soleMentorReposPost')}
+                  </p>
+                </div>
+              )}
+            </div>
           }
-          confirmLabel="Çıkar ve PR aç"
+          confirmLabel={batchMode ? t('memberDetail.addToCart') : t('memberDetail.removeOrgConfirm')}
           danger
           busy={busy}
           onConfirm={() => void removeFromOrg()}

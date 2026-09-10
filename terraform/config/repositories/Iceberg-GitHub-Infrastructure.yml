@@ -1,5 +1,5 @@
 description: "Infrastructure as Code for managing the Iceberg organization"
-language: typescript
+language: hcl
 
 # ⚠️ BU LİSTE BUGÜNKÜ EN ÖNEMLİ GÜVENLİK SINIRIDIR — kilitlerden daha önemli.
 #
@@ -23,9 +23,7 @@ mentors:
   # bypass eder. Bilinçli karar (Ozan).
   - Dogancan-Acar
 
-developers:
-  - paitblack
-  - medine2906
+developers: []
 
 default_branch: main
 
@@ -74,3 +72,5 @@ files:
 
 protected_branches:
   develop: null
+
+viewers: []

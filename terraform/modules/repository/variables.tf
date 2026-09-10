@@ -24,13 +24,13 @@ variable "description" {
 }
 
 variable "language" {
-  type        = string
-  description = "Primary programming language - drives CI template and label selection"
-
-  validation {
-    condition     = contains(["go", "python", "typescript", "php"], var.language)
-    error_message = "language must be one of: go, python, typescript, php."
-  }
+  type = string
+  # Display metadata only — the CI template auto-detects languages from the repo's
+  # files (the `detect` job); this value drives nothing. Intentionally NOT validated
+  # against a fixed list, so adding a language to the dashboard picker never requires
+  # an engine change/apply. The dashboard shows known languages with a logo and
+  # falls back to a monogram for anything else.
+  description = "Primary programming language (display metadata; CI auto-detects)"
 }
 
 # --- Repo ayarları --------------------------------------------------------
@@ -147,6 +147,12 @@ variable "developers" {
   default     = []
 }
 
+variable "viewers" {
+  type        = list(string)
+  description = "GitHub usernames with read-only (pull) access to the repository"
+  default     = []
+}
+
 variable "role_permissions" {
   type        = map(string)
   description = <<-EOT
@@ -157,6 +163,7 @@ variable "role_permissions" {
   default = {
     mentor    = "admin"
     developer = "push"
+    viewer    = "pull"
   }
 }
 

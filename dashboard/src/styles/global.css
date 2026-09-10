@@ -146,14 +146,17 @@ pre {
 
 .grid-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: var(--sp-5);
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--sp-4);
 }
 
 .page-header {
   display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
   margin-bottom: var(--sp-6);
 }
 
@@ -400,6 +403,57 @@ pre {
   flex: none;
 }
 
+/* GitHub tarzı issue etiketi — renk `--label-color` değişkeninden gelir.
+   Solid renkli kenar + camsı yarı-saydam iç + kontrastlı yazı. Varsayılan
+   (bare :root) = açık tema; koyu tema aşağıda ezer (btn-primary ile aynı desen). */
+.label-chip {
+  --label-color: #ededed;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.6rem;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--label-color) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--label-color) 62%, transparent);
+  color: color-mix(in srgb, var(--label-color) 60%, #0d1117);
+}
+
+/* Org ayarları bölüm başlığının sağındaki ikon tile'ı. */
+.section-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  color: var(--accent);
+}
+.section-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+:root[data-theme='dark'] .label-chip,
+:root:not([data-theme='light']) .label-chip {
+  background: color-mix(in srgb, var(--label-color) 20%, transparent);
+  border-color: color-mix(in srgb, var(--label-color) 55%, transparent);
+  color: color-mix(in srgb, var(--label-color) 82%, #ffffff);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) .label-chip {
+    background: color-mix(in srgb, var(--label-color) 13%, transparent);
+    border-color: color-mix(in srgb, var(--label-color) 62%, transparent);
+    color: color-mix(in srgb, var(--label-color) 60%, #0d1117);
+  }
+}
+
 .badge-success {
   color: var(--success);
   background: var(--success-soft);
@@ -568,9 +622,11 @@ a.person:hover {
 }
 
 .modal {
+  display: flex;
+  flex-direction: column;
   width: min(560px, 100%);
   max-height: min(85vh, 720px);
-  overflow-y: auto;
+  overflow: hidden; /* köşeler kırpılsın; kaydırma gövdede (.modal-body) */
   padding: var(--sp-6);
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-strong);
@@ -579,11 +635,29 @@ a.person:hover {
   animation: modal-in var(--dur-slow) var(--ease);
 }
 
+/* Başlık ve footer sabit kalır; yalnızca gövde kayar → üst asla kırpılmaz. */
+.modal-title {
+  flex: none;
+  margin-bottom: var(--sp-4);
+}
+
+.modal-body {
+  flex: 1 1 auto;
+  min-height: 0; /* flex çocuğunun taşabilmesi/kayabilmesi için şart */
+  overflow-y: auto;
+  /* Kayan içeriğin kenar boşluğu odak halkasını kırpmasın diye küçük iç pay. */
+  margin: 0 calc(var(--sp-2) * -1);
+  padding: 0 var(--sp-2);
+}
+
 .modal-actions {
+  flex: none;
   display: flex;
   justify-content: flex-end;
   gap: var(--sp-3);
-  margin-top: var(--sp-6);
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--border);
 }
 
 @keyframes fade-in {
@@ -660,16 +734,10 @@ a.person:hover {
 }
 
 .brand-mark {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-md);
-  background: linear-gradient(140deg, var(--brand-400), var(--brand-600));
-  color: #fff;
-  font-size: var(--text-sm);
-  font-weight: 700;
-  box-shadow: var(--shadow-sm);
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: block;
 }
 
 .nav {
@@ -680,6 +748,9 @@ a.person:hover {
 }
 
 .nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
   padding: 0.35rem 0.7rem;
   border-radius: var(--radius-md);
   color: var(--fg-muted);
@@ -688,6 +759,21 @@ a.person:hover {
   transition:
     background var(--dur-fast) var(--ease),
     color var(--dur-fast) var(--ease);
+}
+
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: var(--text-xs);
+  font-weight: 650;
+  line-height: 1;
 }
 
 .nav-link:hover {
@@ -772,6 +858,12 @@ a.person:hover {
 
 .rule-table tr:last-child td {
   border-bottom: 0;
+}
+
+/* Açıklaması olan sütun başlığı: hover ile title tooltip'i, imleç ipucu. */
+.rule-table th .th-help {
+  cursor: help;
+  border-bottom: 1px dotted var(--fg-subtle);
 }
 
 .table-scroll {
@@ -897,12 +989,45 @@ a.person:hover {
     grid-template-columns: 1fr;
   }
 
-  .nav-link {
-    padding: 0.35rem 0.5rem;
+  /* Başlık iki satıra döner: üst satır marka + tema + kullanıcı, alt satır tam
+     genişlikte kayan nav. Sabit yükseklik yerine içeriğe göre uzar. */
+  .header {
+    height: auto;
   }
 
   .header-inner {
+    flex-wrap: wrap;
+    gap: var(--sp-2) var(--sp-3);
+    padding-block: var(--sp-2);
+  }
+
+  .nav {
+    order: 5;
+    width: 100%;
+    margin-left: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-link {
+    padding: 0.35rem 0.5rem;
+    white-space: nowrap;
+  }
+
+  /* Sayfa başlığı ve aksiyon butonları dar ekranda üst üste yığılır. */
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
     gap: var(--sp-3);
+  }
+
+  .row-between {
+    flex-wrap: wrap;
   }
 
   .toast-region {
@@ -910,5 +1035,12 @@ a.person:hover {
     left: var(--sp-3);
     bottom: var(--sp-3);
     width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  /* En dar ekranda kullanıcı adını gizle — avatar + çıkış yeterli. */
+  .header-user {
+    display: none;
   }
 }
