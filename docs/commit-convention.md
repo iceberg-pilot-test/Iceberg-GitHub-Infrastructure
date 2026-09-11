@@ -1,6 +1,6 @@
 # Commit Mesajı Standartları (Conventional Commits)
 
-Iceberg Digital mühendislik ekipleri olarak, kod geçmişimizi temiz tutmak, kod inceleme (code review) süreçlerini hızlandırmak ve otomatik sürüm yönetimi (Semantic Versioning) yapabilmek için [Conventional Commits](https://www.conventionalcommits.org/) standardını kullanıyoruz.
+Tidyorg mühendislik ekipleri olarak, kod geçmişimizi temiz tutmak, kod inceleme (code review) süreçlerini hızlandırmak ve otomatik sürüm yönetimi (Semantic Versioning) yapabilmek için [Conventional Commits](https://www.conventionalcommits.org/) standardını kullanıyoruz.
 
 Tüm PR'lar (Pull Request) ve commit mesajları bu standarda uygun olmalıdır.
 

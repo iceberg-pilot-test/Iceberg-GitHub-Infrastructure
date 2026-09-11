@@ -70,7 +70,7 @@ bir kez tanımlanır. Kişi değiştiğinde bu bölüme dokunulmaz — yalnızca
 
 ```yaml
 people:
-  uslanozan:
+  owner-a:
     org_role: admin
     roles: [head-of-engineering]
 
@@ -341,7 +341,7 @@ Sistemde **iki ayrı kimlik** var; karıştırılmamalıdır:
 | Kimlik | Neye erişir | Nerede durur |
 | :--- | :--- | :--- |
 | **`TF_API_TOKEN`** (HCP Team API Token) | GitHub Actions → HCP Terraform Cloud (state + run) | GitHub repository secret |
-| **`iceberg-infra-bot`** (GitHub App) | Terraform provider → GitHub organizasyonu | HCP Terraform'da sensitive environment variable |
+| **`tidyorg-infra-bot`** (GitHub App) | Terraform provider → GitHub organizasyonu | HCP Terraform'da sensitive environment variable |
 
 GitHub'a yazan taraf **App**'tir; `TF_API_TOKEN` yalnızca CI'ın HCP'ye bağlanmasını
 sağlar. App'in private key'i hiçbir geliştiricinin makinesine inmez ve installation
@@ -351,7 +351,7 @@ token'ı ~1 saatte bir otomatik yenilenir. Kurulum ve izin listesi:
 ### 7.1 Team API Token Oluşturma (HCP Terraform)
 
 1. HCP Terraform'da organizasyon ayarlarına gidin:
-   `https://app.terraform.io/app/iceberg-infra/settings/organization-tokens`
+   `https://app.terraform.io/app/tidyorg-infra/settings/organization-tokens`
 2. **Team Tokens** sekmesini seçin.
 3. Workspace üzerinde `Admin` veya `Write` yetkisi olan bir takımı seçin (örn: `owners` takımı).
 4. **"Generate a team token"** butonuna basın, açıklama yazın ve oluşturun.
@@ -359,7 +359,7 @@ token'ı ~1 saatte bir otomatik yenilenir. Kurulum ve izin listesi:
 
 ### 7.2 GitHub Secrets Konfigürasyonu
 
-1. GitHub'da `Iceberg-GitHub-Infrastructure` reposunun ayarlarına (**Settings**) gidin.
+1. GitHub'da `tidyorg` reposunun ayarlarına (**Settings**) gidin.
 2. Sol menüden **Secrets and variables** -> **Actions** yolunu izleyin.
 3. **"New repository secret"** butonuna tıklayın.
 4. İsim alanına **`TF_API_TOKEN`** yazın.

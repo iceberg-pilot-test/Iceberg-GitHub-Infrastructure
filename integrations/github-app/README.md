@@ -1,10 +1,10 @@
-# iceberg-infra-bot — GitHub App
+# tidyorg-infra-bot — GitHub App
 
 Terraform'un GitHub organizasyonunu yönetmesi için kullanılan bot kimliği.
 Kişisel token (PAT) yerine organizasyona ait bir GitHub App kullanmanın avantajları:
 
 - **Kişi bağımlılığı yok** — kişi ayrılsa bile sistem çalışmaya devam eder
-- **Audit log** — tüm işlemler `iceberg-infra-bot[bot]` adına görünür, manuel değişikliklerle karışmaz
+- **Audit log** — tüm işlemler `tidyorg-infra-bot[bot]` adına görünür, manuel değişikliklerle karışmaz
 - **Kısa ömürlü token** — ~1 saatlik installation token otomatik yenilenir, uzun ömürlü sır saklanmaz
 - **Dar kapsam** — yalnızca izin verilen repo ve org işlemleri yapılabilir
 
@@ -14,9 +14,9 @@ Kişisel token (PAT) yerine organizasyona ait bir GitHub App kullanmanın avanta
 | :--- | :--- |
 | **App ID** | `<YOUR_APP_ID>` |
 | **Installation ID** | `<YOUR_INSTALLATION_ID>` |
-| **Organizasyon** | `iceberg-pilot-test` |
+| **Organizasyon** | `your-org` |
 | **Kuruldu** | 2026-08-15 |
-| **Kuran** | uslanozan |
+| **Kuran** | owner-a |
 
 ### İzinler
 
@@ -47,15 +47,15 @@ Kişisel token (PAT) yerine organizasyona ait bir GitHub App kullanmanın avanta
 Şu sayfaya git (org admin yetkisi gerekir):
 
 ```
-https://github.com/organizations/iceberg-pilot-test/settings/apps/new
+https://github.com/organizations/your-org/settings/apps/new
 ```
 
 Formu doldur:
 
 | Alan | Değer |
 | :--- | :--- |
-| **GitHub App name** | `iceberg-infra-bot` |
-| **Homepage URL** | `https://github.com/iceberg-pilot-test` |
+| **GitHub App name** | `tidyorg-infra-bot` |
+| **Homepage URL** | `https://github.com/your-org` |
 | **Webhook → Active** | ❌ İşareti kaldır |
 | **Where can this app be installed?** | Only on this account |
 
@@ -115,7 +115,7 @@ Bu sayıyı bir yere not al.
 Aynı sayfada aşağı kaydır → **"Private keys"** bölümü:
 
 1. **"Generate a private key"** butonuna tıkla
-2. `.pem` uzantılı dosya otomatik iner (örn: `iceberg-infra-bot.2026-08-15.private-key.pem`)
+2. `.pem` uzantılı dosya otomatik iner (örn: `tidyorg-infra-bot.2026-08-15.private-key.pem`)
 3. Bu dosyayı güvenli bir yerde sakla — **bir daha indiremezsin**
 
 > ⚠️ `.pem` dosyası RSA özel anahtarıdır. Asla repoya commit etme, paylaşma.
@@ -141,7 +141,7 @@ HCP Terraform bunu **tek satır** olarak bekler; satır sonları `\n` karakteriy
 
 ```powershell
 # Dosya adını kendi indirilen dosyanla değiştir
-$pem = Get-Content "$env:USERPROFILE\Downloads\iceberg-infra-bot.2026-08-15.private-key.pem" -Raw
+$pem = Get-Content "$env:USERPROFILE\Downloads\tidyorg-infra-bot.2026-08-15.private-key.pem" -Raw
 $oneLine = $pem -replace "`r`n", "\n" -replace "`n", "\n"
 $oneLine | Set-Clipboard
 Write-Host "Kopyalandı! HCP Terraform'a yapıştırabilirsin."
@@ -158,17 +158,17 @@ Write-Host "Kopyalandı! HCP Terraform'a yapıştırabilirsin."
 
 App settings sayfasında sol menüde **"Install App"**:
 
-1. `iceberg-pilot-test` organizasyonunu seç
+1. `your-org` organizasyonunu seç
 2. **"Install"** tıkla
 3. "All repositories" seç → **"Install"**
 
 Kurulumdan sonra Installation ID'yi al:
 
 ```
-https://github.com/organizations/iceberg-pilot-test/settings/installations
+https://github.com/organizations/your-org/settings/installations
 ```
 
-→ `iceberg-infra-bot` → "Configure" tıkla → URL'ye bak:
+→ `tidyorg-infra-bot` → "Configure" tıkla → URL'ye bak:
 
 ```
 https://github.com/settings/installations/<YOUR_INSTALLATION_ID>
@@ -181,7 +181,7 @@ https://github.com/settings/installations/<YOUR_INSTALLATION_ID>
 ### 6. HCP Terraform'a Değişkenleri Gir
 
 ```
-https://app.terraform.io → iceberg-infra org → github-management workspace → Variables
+https://app.terraform.io → tidyorg-infra org → github-management workspace → Variables
 ```
 
 "Add variable" ile şu üç değişkeni ekle:
@@ -218,7 +218,7 @@ provider "github" {
 ```hcl
 variable "github_app_id" {
   type        = string
-  description = "GitHub App ID (iceberg-infra-bot)"
+  description = "GitHub App ID (tidyorg-infra-bot)"
 }
 
 variable "github_app_installation_id" {
@@ -260,7 +260,7 @@ Veya drift varsa değişiklik listesi gelir — `No changes` olana kadar `apply`
 
 - HCP'deki `github_app_pem_file` değerini kontrol et: `-----BEGIN RSA PRIVATE KEY-----` ile başlamalı
 - Satır sonlarının `\n` olarak yazıldığından emin ol (`\\n` değil — iki backslash değil, bir backslash + n)
-- App'in organizasyona kurulu olduğunu doğrula: https://github.com/organizations/iceberg-pilot-test/settings/installations
+- App'in organizasyona kurulu olduğunu doğrula: https://github.com/organizations/your-org/settings/installations
 
 ### "Variable not declared" uyarısı
 
@@ -270,6 +270,6 @@ HCP değişken key'inde `TF_VAR_` prefix'i varsa kaldır. `github_app_id` olmal�
 
 GitHub App settings sayfasında eski key'i iptal edip yeni bir tane üretebilirsin:
 ```
-https://github.com/organizations/iceberg-pilot-test/settings/apps/iceberg-infra-bot
+https://github.com/organizations/your-org/settings/apps/tidyorg-infra-bot
 ```
 → "Private keys" → "Generate a private key" → 4. adımı tekrarla → HCP'de güncelle.

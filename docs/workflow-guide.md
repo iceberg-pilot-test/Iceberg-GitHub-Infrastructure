@@ -1,6 +1,6 @@
 # İş Akışı Rehberi
 
-Bu doküman, Iceberg Digital mühendislik organizasyonundaki **tüm iş akışlarının giriş
+Bu doküman, Tidyorg mühendislik organizasyonundaki **tüm iş akışlarının giriş
 noktasıdır**. Nereden başlayacağını bilmiyorsan buradan başla; her bölüm ilgili detay
 dokümanına yönlendirir.
 
@@ -80,7 +80,7 @@ git checkout -b feat/LIN-123-user-auth
 Dal isimlendirme kuralları: [`branching-strategy.md`](branching-strategy.md).
 Kısaca: `feat/`, `fix/`, `chore/`, `docs/`, `release/`, `hotfix/`.
 
-> **Kontrol düzlemi repolarında `develop` yoktur.** `Iceberg-GitHub-Infrastructure` gibi
+> **Kontrol düzlemi repolarında `develop` yoktur.** `tidyorg` gibi
 > config ve motor barındıran repolarda dal doğrudan `main`'den açılır ve `main`'e döner.
 > Gerekçe: [`branching-strategy.md`](branching-strategy.md) Bölüm 8 (Karar F).
 
@@ -254,5 +254,3 @@ durumdur; ayrıntı [`ACCESS-MODEL.md`](../ACCESS-MODEL.md).
 | Doküman | İçerik |
 | :--- | :--- |
 | [`adr/`](adr/) | Mimari kararlar ve gerekçeleri |
-| [`pilot-verification.md`](pilot-verification.md) | Sistemin çalıştığının kanıtı |
-| [`daily-logs/`](daily-logs/) | Günlük çalışma kayıtları |

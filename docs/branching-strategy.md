@@ -1,6 +1,6 @@
 # Branching Stratejisi ve İş Akışı
 
-Bu doküman, Iceberg Digital mühendislik ekiplerinin izleyeceği dal (branch) stratejisini
+Bu doküman, Tidyorg mühendislik ekiplerinin izleyeceği dal (branch) stratejisini
 ve günlük çalışma pratiklerini tanımlar.
 
 Son güncelleme: 2026-08-17
@@ -10,7 +10,7 @@ Son güncelleme: 2026-08-17
 > | Repo tipi | Örnek | Akış | Varsayılan dal |
 > | :--- | :--- | :--- | :--- |
 > | **Ürün repoları** | `pilot-intern-api`, `pilot-intern-web` | `feat/` → `develop` → `main` | `develop` |
-> | **Kontrol düzlemi repoları** | `Iceberg-GitHub-Infrastructure` | **trunk-based** — `feat/` → `main` | `main` |
+> | **Kontrol düzlemi repoları** | `tidyorg` | **trunk-based** — `feat/` → `main` | `main` |
 >
 > Bölüm 1–7 ürün repolarını anlatır. Kontrol düzlemi istisnası **Bölüm 8**'dedir.
 
@@ -18,7 +18,7 @@ Son güncelleme: 2026-08-17
 
 ## 1. Neden Modified GitFlow (ürün repolarında)
 
-Iceberg Digital bünyesinde çoklu servis mimarisi ve farklı tecrübe seviyelerinde
+Tidyorg bünyesinde çoklu servis mimarisi ve farklı tecrübe seviyelerinde
 geliştiriciler (Backend, Frontend, DevOps, stajyerler) eşzamanlı çalışıyor. Ürün
 repolarında **Modified GitFlow** benimsendi.
 
@@ -27,9 +27,8 @@ repolarında **Modified GitFlow** benimsendi.
   aktarılır; sürüm yönetimi öngörülebilir olur.
 * **Ön koşul meselesi:** Trunk-based development'ın ön koşulu yüksek otomatik test
   kapsamı ve feature flag disiplinidir. Bugün repo'larda test altyapısı henüz yok
-  (bkz. [`pilot-verification.md`](pilot-verification.md) Bölüm 7.6 — `ci/test` dil
-  job'ları manifest yoksa `skipped` geçiyor). O olgunluk geldiğinde bu karar yeniden
-  değerlendirilmelidir.
+  (`ci/test` dil job'ları manifest yoksa `skipped` geçiyor). O olgunluk geldiğinde bu
+  karar yeniden değerlendirilmelidir.
 
 > **Yanlış anlaşılmasın:** Bu seçim çakışma (merge conflict) riskini azaltmak için
 > yapılmadı. Çakışmayı büyüten şey `develop`'ın varlığı değil, **feature dalının uzun
@@ -217,8 +216,8 @@ Hotfix dalı test edildikten sonra PR ile `main`'e merge edilir.
 
 _Karar F / K6 · 2026-08-16 · [`ROADMAP.md`](../ROADMAP.md)_
 
-Konfigürasyonu ve altyapı motorunu barındıran repo'larda (`Iceberg-GitHub-Infrastructure`
-ve Faz 8 sonrası doğacak `iceberg-org-config`) **`develop` dalı yoktur.** Varsayılan dal
+Konfigürasyonu ve altyapı motorunu barındıran repo'larda (`tidyorg`
+ve Faz 8 sonrası doğacak `tidyorg-org-config`) **`develop` dalı yoktur.** Varsayılan dal
 `main`'dir ve akış `feat/` → `main` biçiminde çalışır.
 
 **Neden:** `terraform apply` yalnızca `main`'e push'ta tetikleniyor. Bu repolarda
@@ -226,8 +225,7 @@ ve Faz 8 sonrası doğacak `iceberg-org-config`) **`develop` dalı yoktur.** Var
 durumunda kalır. Bu bir gecikme değil, **yalan**: repo'da yazan şey ile GitHub'daki
 gerçeklik ayrışır.
 
-Bu teorik bir endişe değil — canlı gözlendi ve kayda geçti:
-[`pilot-verification.md`](pilot-verification.md) Bölüm 7.4.
+Bu teorik bir endişe değil — canlı gözlendi ve kayda geçti.
 
 **`develop` ne zaman geri gelir:** Arkasında ayrı bir ortam olduğunda. Bir sandbox
 organizasyonu + bir prod organizasyonu ayrımı kurulursa `develop`'ın uygulanacağı gerçek

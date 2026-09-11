@@ -1,4 +1,4 @@
-# Contributing to Iceberg Digital · Iceberg Digital'a Katkıda Bulunma
+# Contributing to Tidyorg · Tidyorg'a Katkıda Bulunma
 
 EN — First off, thank you for considering contributing to our project. This document outlines the engineering standards and workflows we follow.
 TR — Öncelikle, projemize katkıda bulunmayı düşündüğünüz için teşekkür ederiz. Bu belge, izlediğimiz mühendislik standartlarını ve iş akışlarını özetlemektedir.

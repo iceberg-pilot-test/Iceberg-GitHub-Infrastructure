@@ -1,9 +1,9 @@
 # tidyorg-dashboard — GitHub App
 
-Dashboard'ın kullandığı **ikinci** GitHub App. Engine bot'undan (`iceberg-infra-bot`,
+Dashboard'ın kullandığı **ikinci** GitHub App. Engine bot'undan (`tidyorg-infra-bot`,
 bkz. [`README.md`](README.md)) tamamen ayrıdır ve **çok daha dardır**.
 
-| | **iceberg-infra-bot** (engine) | **tidyorg-dashboard** (bu) |
+| | **tidyorg-infra-bot** (engine) | **tidyorg-dashboard** (bu) |
 | :--- | :--- | :--- |
 | Kullanan | Terraform provider | React SPA (tarayıcı) |
 | Auth | App private key (server-to-server) | Kullanıcı device flow (user-to-server) |

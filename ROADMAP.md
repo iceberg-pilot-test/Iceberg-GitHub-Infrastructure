@@ -1,12 +1,9 @@
 # Yol Haritası — Hedef Mimariye Geçiş
 
-> **Bu doküman güncel plandır.** [`implementation plan.md`](implementation%20plan.md) projenin
-> başlangıcında yazıldı ve tarihsel kayıt olarak duruyor; oradaki takım hiyerarşisi ve
-> yetki matrisi artık geçerli değil.
+> **Bu doküman güncel plandır.**
 >
 > Modelin gerekçeleri: [`ACCESS-MODEL.md`](ACCESS-MODEL.md) · Yetki katmanları:
-> [`docs/rbac-and-permissions.md`](docs/rbac-and-permissions.md) · Kısa vadeli engeller:
-> [`TODO.md`](TODO.md)
+> [`docs/rbac-and-permissions.md`](docs/rbac-and-permissions.md)
 
 Son güncelleme: 2026-08-19
 
@@ -21,11 +18,11 @@ Son güncelleme: 2026-08-19
 | Terraform iskeleti, HCP backend, ortak state | ✅ Canlı |
 | Repository modülü (config-driven) | ✅ Canlı, uçtan uca doğrulandı |
 | `pilot-intern-web`, `pilot-intern-api` | ✅ İkisi de modülden yönetiliyor |
-| `Iceberg-GitHub-Infrastructure` — kendini yönetiyor | ✅ Dogfooding, `imports.tf` ile |
+| `tidyorg` — kendini yönetiyor | ✅ Dogfooding, `imports.tf` ile |
 | Config repo başına dosyaya bölündü _(Faz 1)_ | ✅ `config/repositories/*.yml` |
 | Eski 9 takım silindi, `platform-admins` kaldı | ✅ Canlı |
 | GitOps döngüsü _(Faz 3)_ | ✅ Workflow'lar yazıldı ve düzeltildi |
-| GitHub App `iceberg-infra-bot` _(Faz 4)_ | ✅ Terraform artık bot kimliğiyle çalışıyor |
+| GitHub App `tidyorg-infra-bot` _(Faz 4)_ | ✅ Terraform artık bot kimliğiyle çalışıyor |
 | Şablon ve workflow dağıtımı _(Faz 2)_ | ✅ Üç repo'ya indi; `ci/test` ilk kez yeşil _(2026-08-16)_ |
 | Erişim modelinin **ret tarafı** | ✅ Canlı doğrulandı — `GH006`, "Review required" |
 | 12 doküman + 1 ADR | ✅ Yazıldı |
@@ -33,7 +30,7 @@ Son güncelleme: 2026-08-19
 **Çalışmıyor / eksik:**
 
 1. ~~`people` bölümü okunmuyor~~ ✅ **2026-08-18** — `people.tf` ile config'den
-   üretiliyor; istisna dosyaları kaldırıldı. Tek boşluk: `uslanozan` break-glass
+   üretiliyor; istisna dosyaları kaldırıldı. Tek boşluk: `owner-a` break-glass
    gereği yönetim dışı, org rolü hâlâ beyan _(bypass raporu bunu ismen söylüyor)_
 2. ~~`default_repository_permission` = `Read`~~ ✅ **2026-08-18** — `none` yapıldı;
    erişimin tek kaynağı artık takım üyeliği
@@ -98,7 +95,7 @@ dürüstçe anlattığı yer: [`docs/release-process.md`](docs/release-process.m
 uyarı kutusu.
 
 **Karar H — Otomasyon kimlikleri (agent'lar) kendi App'ini alır.**
-`iceberg-infra-bot`'un izinleri Administration + Contents + Members write. Bir review
+`tidyorg-infra-bot`'un izinleri Administration + Contents + Members write. Bir review
 veya triage agent'ına bu kimliği vermek, prompt injection'ı yetki yükseltmeye çevirir.
 Agent'lar minimum izinli ayrı App kullanır ve **config'de görünür olur** — bugün model
 yalnızca insan rollerini tanıyor.
@@ -115,7 +112,7 @@ Her faz bağımsız olarak tamamlanabilir ve kendi başına değer üretir.
 
 - [x] `enforce_admins` → `false`
 - [x] Kök `outputs.tf` dolduruldu
-- [x] Ozan `platform-admins`'e eklendi
+- [x] owner-a `platform-admins`'e eklendi
 - [x] 9 eski takım silindi — `plan` sonrası **No changes** ile doğrulandı
 - [x] `pilot-intern-api` `terraform state mv` ile modüle taşındı _(2026-08-15)_
 - [ ] Bekleyen iki branch: `docs/engineering-standards-fixes`, `feat/branch-protection-fixes`
@@ -133,7 +130,7 @@ terraform/config/
 └── repositories/
     ├── pilot-intern-web.yml
     ├── pilot-intern-api.yml
-    └── Iceberg-GitHub-Infrastructure.yml
+    └── tidyorg.yml
 ```
 
 Dosya adı = repo adı. `repositories.tf` `fileset()` + `yamldecode` ile besleniyor.
@@ -166,7 +163,6 @@ defaults:
 - [x] **Tutarlılık doğrulaması:** `workflows` içinde `ci` yoksa `require_status_checks`
       da boş olmalı — modül bunu `precondition` ile hata veriyor
 - [x] Doğrulandı: PR template görünüyor, `ci/test` raporlanıyor
-      _(bkz. [`docs/pilot-verification.md`](docs/pilot-verification.md) Bölüm 7.6)_
 - [x] Satır sonu normalizasyonu (`\r\n` → `\n`) — apply'ı çalıştıran makineye göre
       değişen sahte diff'ler giderildi _(2026-08-16)_
 - [x] `release` workflow'unun akıbeti **karara bağlandı** _(2026-08-17)_ — opt-in kalıyor,
@@ -174,8 +170,7 @@ defaults:
 
 > 🔴 **Bu faz bir blokajı çözdü, sadece bir iyileştirme değildi.**
 > Erişim düzeltmesinden sonra normal developer akışı devreye girmiş ve `ci/test`
-> hiçbir repoda üretilmediği için **onaylanmış PR bile merge edilemiyordu**
-> (kanıt: [`docs/pilot-verification.md`](docs/pilot-verification.md) Bölüm 6.4).
+> hiçbir repoda üretilmediği için **onaylanmış PR bile merge edilemiyordu**.
 > Şablon dağıtımıyla kapandı.
 
 > 💡 **Faz 8 ve Karar H'yi tasarlarken akılda tut.** Şemayı bir kez kurup sonra
@@ -198,7 +193,7 @@ defaults:
 
 ### Faz 4 — GitHub App ✅ _(tamamlandı, 2026-08-15)_
 
-`iceberg-infra-bot` oluşturuldu; Terraform provider App kimliğine geçirildi. Commit'ler
+`tidyorg-infra-bot` oluşturuldu; Terraform provider App kimliğine geçirildi. Commit'ler
 artık bot adına düşüyor. Kurulum kılavuzu:
 [`integrations/github-app/README.md`](integrations/github-app/README.md)
 
@@ -257,7 +252,7 @@ reddedilir. Denetim izi gerçektir — commit'ler işlemi yapan kişinin adına 
       `org-membership.tf` ve `team-memberships.tf` istisna dosyaları kaldırıldı.
       **`moved` blokları sayesinde geçiş `0 to add, 0 to change, 0 to destroy`** —
       saf adres taşıması, tek bir API çağrısı bile yapılmadı.
-      Break-glass: `uslanozan` bilerek yönetim dışı (`unmanaged_people`).
+      Break-glass: `owner-a` bilerek yönetim dışı (`unmanaged_people`).
       **Doğrulama plan aşamasında zorlanıyor** ve ikisi de canlı test edildi:
       `people.roles` içine repo kapsamlı rol yazmak · `org_role` yazmayı unutmak.
       Kural hardcode değil — `roles:` bloğundaki `scope` alanından türetiliyor.
@@ -278,7 +273,7 @@ reddedilir. Denetim izi gerçektir — commit'ler işlemi yapan kişinin adına 
       `members_can_create_repositories = false`. Artık yalnızca org owner elle repo
       açabilir; normal yol config'den geçiyor.
       ⚠️ GitHub "sadece mentörler" diyemiyor — org düzeyinde yetki ikili (tüm üyeler /
-      yalnızca owner'lar), takım bazlı ara kademe yok. Bugün tek owner `uslanozan`
+      yalnızca owner'lar), takım bazlı ara kademe yok. Bugün tek owner `owner-a`
       olduğu için sonuç aynı, ama owner olmayan bir mentör repo açamaz.
       ⚠️ **Doğrulanmadı:** bu ayarın GitHub App'i etkilemediği varsayılıyor (App org
       üyesi değil). Bir sonraki repo yaratımı bunu kanıtlayacak; `403` gelirse geri alınır.
@@ -304,7 +299,7 @@ reddedilir. Denetim izi gerçektir — commit'ler işlemi yapan kişinin adına 
 >
 > Devralma prosedürü, üç senaryo (dış sistemden gelen / org'dan org'a / bireysel hesaptan)
 > ve iki pürüz — takımların transfer olmaması, repo oluşturma kısıtının transferi
-> engelleyebilmesi — [`TODO.md`](TODO.md) → GIT-34 bölümünde.
+> engelleyebilmesi — ayrıca izlenmeli.
 >
 > Aşağıdaki analiz **sorunun tanımı** olarak duruyor; hâlâ geçerli, çünkü kapsama kontrolü
 > sorunu *görünür* kıldı, *çözmedi*.
@@ -409,8 +404,8 @@ ve modül private'ı destekliyor — `pilot-access-test` bugün private ve modü
 > (pre-commit hook, CI adımı, ya da Enterprise) **ayrıca karara bağlanmalı** — sessizce
 > kaybedilmemeli.
 
-> **Bu arada:** [`docs/pilot-verification.md`](docs/pilot-verification.md)'deki
-> doğrulamalar public repo üzerinde yapıldı. Private repo'da davranış farklı olabilir.
+> **Bu arada:** Doğrulamalar public repo üzerinde yapıldı. Private repo'da davranış
+> farklı olabilir.
 
 ---
 
@@ -447,7 +442,7 @@ protection da bypass ediliyor. Sınır ancak repo sınırı olabilir.
 **Hedef:**
 
 ```
-Iceberg-GitHub-Infrastructure          iceberg-org-config
+tidyorg                                tidyorg-org-config
   MOTOR                                  DURUM
   modules/ · templates/ · docs/          config/organization.yml
   trunk-based + tag                      config/repositories/*.yml
@@ -458,7 +453,7 @@ Iceberg-GitHub-Infrastructure          iceberg-org-config
 
 **Yapılacaklar:**
 
-- [ ] Yeni repo'yu **config'den** aç (dogfooding) — `iceberg-org-config`
+- [ ] Yeni repo'yu **config'den** aç (dogfooding) — `tidyorg-org-config`
 - [ ] `terraform/config/` klasörünü taşı
 - [ ] Yeni repoda ince bir root yaz:
       `module "repositories" { source = "git::https://github.com/...//terraform/modules/repository?ref=v1.0.0" }`
@@ -512,7 +507,7 @@ config bildirimsel, motor onu uygular, agent'lar sürekli çalışır — Terraf
 | Agent tipi | Nerede yaşar | Dağıtım |
 | :--- | :--- | :--- |
 | Olay güdümlü _(PR açıldı → review)_ | Hedef repoda | **Faz 2'nin mekanizması** — config karar verir, modül workflow dosyasını yazar |
-| Repo-üstü _(org geneli tarama)_ | Merkezi zamanlanmış workflow | Bu repoda ya da ayrı `iceberg-automation` |
+| Repo-üstü _(org geneli tarama)_ | Merkezi zamanlanmış workflow | Bu repoda ya da ayrı `tidyorg-automation` |
 
 Şema genişlemesi Faz 2'nin devamı olur — yeni mekanizma gerekmiyor:
 
@@ -526,7 +521,7 @@ defaults:
 ```
 
 - [ ] Agent'lar için **ayrı GitHub App** — minimum izin (PR read/write, issues write,
-      contents read). `iceberg-infra-bot` kimliği **asla** verilmez _(Karar H)_
+      contents read). `tidyorg-infra-bot` kimliği **asla** verilmez _(Karar H)_
 - [ ] `ACCESS-MODEL.md`'ye "insan olmayan aktörler" bölümü — bot'lar da rol taşır ve
       config'de görünür. Yoksa "hangi bot neye erişebiliyor?" sorusunun cevabı yine
       `.tf` okumakta olur
@@ -591,8 +586,7 @@ bir kişiye birden fazla takım üzerinden erişim verildiğinde **en yüksek** 
 > Tek repoda bu sınır **kurulamaz**. Faz 8 ile repo sınırına taşınıyor.
 
 ### K4 — Repo isimlendirme standardı yok ✅
-`svc-`, `web-`, `lib-` gibi bir önek zorunluluğu **olmayacak**. `implementation plan.md`'deki
-ilgili bölüm geçersizdir.
+`svc-`, `web-`, `lib-` gibi bir önek zorunluluğu **olmayacak**.
 
 ### K5 — `enforce_admins` kalıcı olarak `false` ✅ _(2026-08-16)_
 Karar E. Gerekçe: mentörler ve üstü her zaman hızlı karar alabilmeli.
@@ -605,26 +599,23 @@ repolarında `develop` yalnızca "merge edildi ama uygulanmadı" yalanı üretir
 `develop` ancak arkasında ayrı bir ortam olduğunda (sandbox + prod org) geri gelir.
 
 ### K7 — Agent'lar ayrı kimlik kullanır ✅ _(2026-08-16)_
-Karar H. `iceberg-infra-bot` (Administration + Contents + Members write) bir review
+Karar H. `tidyorg-infra-bot` (Administration + Contents + Members write) bir review
 agent'ına verilemez — prompt injection'ı yetki yükseltmeye çevirir.
 
 ---
 
 ## 6. Haftalara Dağılım
 
-> **Not:** Emre 2026-08-15'te projeden ayrıldı; onun fazları (3 ve 4) Ozan'a geçti ve
-> tamamlandı. Medine dashboard tarafında (Faz 5).
+> **Not:** dev-1 2026-08-15'te projeden ayrıldı; onun fazları (3 ve 4) owner-a'a geçti ve
+> tamamlandı. dev-2 dashboard tarafında (Faz 5).
 
-| Hafta | Ozan 📦 | Medine 🖥️ | Sync noktası |
+| Hafta | owner-a 📦 | dev-2 🖥️ | Sync noktası |
 | :--- | :--- | :--- | :--- |
 | **4** ✅ | Faz 0 + Faz 1 + Faz 3 + Faz 4 + erişim düzeltmesi | Dashboard iskeleti, giriş akışı | — |
 | **5** | **Faz 2** (şablon + workflow dağıtımı) → ardından **Faz 8** (repo ayrımı) | Faz 5a — okuma modu | Split öncesi config şeması dondurulur |
 | **6** | Faz 6 (üyelik, base permission, güvenlik, bypass raporu) | Faz 5b — **yazma modu** _(Faz 8 sonrası)_ | Yazma modunu yeni topolojide birlikte test et |
 | **7** | README, doküman bakımı, ADR 005, sunum yapısı | Faz 5c–5d | Uçtan uca pilot test, canlı demo |
 | **8+** | Faz 9 (agent'lar), Linear/ClickUp, `labels.md` | UX parlatma | — |
-
-Detaylar: [`tasks-ozan.md`](tasks-ozan.md) · [`tasks-medine.md`](tasks-medine.md) ·
-[`tasks-emre.md`](tasks-emre.md) _(deprecated)_
 
 🔴 **Hafta 5'in kritik sıralaması:** Faz 2 → Faz 8 → (ancak sonra) Faz 5b.
 Faz 2 motor ile config şemasının birlikte evrildiği tek iştir; iki repoya bölünmüş halde
