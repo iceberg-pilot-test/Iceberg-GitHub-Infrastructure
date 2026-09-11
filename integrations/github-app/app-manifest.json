@@ -1,6 +1,6 @@
 {
-  "name": "iceberg-infra-bot",
-  "url": "https://github.com/iceberg-pilot-test",
+  "name": "tidyorg-infra-bot",
+  "url": "https://github.com/your-org",
   "description": "Organization-owned bot identity for the Terraform GitHub provider. Removes the dependency on personal tokens; operations appear under the bot name in the audit log.",
   "public": false,
   "hook_attributes": {

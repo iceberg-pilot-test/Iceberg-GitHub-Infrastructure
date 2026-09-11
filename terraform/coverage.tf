@@ -36,7 +36,7 @@ locals {
   # göre değişebiliyor. İkisini de tolere etmek için son bölüm alınıyor: `split`
   # sonucunun son elemanı, ayraç yoksa dizinin kendisidir. Bu, alan biçimi değişirse
   # kontrolün sessizce YANLIŞ sonuç vermesini engelliyor — normalize edilmezse
-  # "iceberg-pilot-test/foo" ile "foo" eşleşmez ve HER repo yönetim dışı görünürdü.
+  # "your-org/foo" ile "foo" eşleşmez ve HER repo yönetim dışı görünürdü.
   org_repo_names = sort([
     for full_name in data.github_organization.this.repositories :
     element(split("/", full_name), length(split("/", full_name)) - 1)

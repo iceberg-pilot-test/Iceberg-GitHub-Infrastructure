@@ -1,18 +1,15 @@
 variable "github_org_name" {
   type        = string
-  description = "GitHub Organization Name"
+  description = "GitHub organization name to manage (required)."
 
-  # ⚠️ Bu default CANLI pilot org'dur ve HCP workspace'i bu değeri AYRICA set
-  # ETMİYOR — motor bugün bu default'a dayanıyor (kaldırılırsa plan "no value"
-  # ile kırılır, canlıda doğrulandı). Açık kaynak için org'a özel bir değerin
-  # koda gömülü olması istenmez; kaldırma yolu: önce HCP'de TF_VAR_github_org_name
-  # set edilir, SONRA bu default silinir (fail-fast). Faz 7 / fresh repo işi.
-  default = "iceberg-pilot-test"
+  # Bilinçli olarak DEFAULT YOK: değer TF_VAR_github_org_name (HCP/ortam değişkeni
+  # ya da terraform.tfvars) ile açıkça verilir. Böylece config sağlanmadan
+  # plan/apply çalışmaz (fail-fast) ve bir fork ASLA başkasının org'unu hedef alamaz.
 }
 
 variable "github_app_id" {
   type        = string
-  description = "GitHub App ID (iceberg-infra-bot)"
+  description = "GitHub App ID (tidyorg-infra-bot)"
 }
 
 variable "github_app_installation_id" {

@@ -68,7 +68,7 @@
 # -----------------------------------------------------------------------------
 # İlk apply denemesi (2026-08-18) şununla patladı:
 #
-#   Error: PATCH https://api.github.com/orgs/iceberg-pilot-test:
+#   Error: PATCH https://api.github.com/orgs/your-org:
 #          403 Resource not accessible by integration
 #
 # Sebep: App'te `Repository → Administration: write` VARDI ama org ayarları için
